@@ -16,33 +16,23 @@ end
 
 function _init()
 	player = init_obj(1,v_init(50,50))
-
-	-- add physics capabilities to the player
 	phy_init_obj(player, 1, v_init(2,2))
+
+	enemy = init_obj(17, v_init(65,50))
+	phy_init_obj(enemy, 1, v_init(1,0))
+
+	states = {}
+	states["move"] = fsm_init_state("move", enemy_move_enter, enemy_move_update, enemy_move_exit)
+	states["idle"] = fsm_init_state("idle", enemy_idle_enter, enemy_idle_update, enemy_idle_exit)
+	enemy.fsm = fsm_init(states, "idle", enemy)
 
 	camera_pos = v_init(0,0)
 	camera_offset = v_init(60,60)
 end
 
 function _update()
-	-- Running mechanics
-	if(btn(0) == true) then
-		 player.vel.x = -player.speed.x
-		 sfx(0)
-	end
-
-	if(btn(1) == true) then
-		player.vel.x = player.speed.x
-		sfx(0)
-	end
-
-	phy_update(player)
-
-	-- Jump mechanics
-	if(btn(2) == true and player.is_on_ground) then
-		player.vel.y = -player.speed.y
-		player.is_on_ground = false
-	end
+	update_player()
+	update_enemy(enemy)
 
 	camera_pos = v_sub(player.pos, camera_offset)
 	camera(camera_pos.x, camera_pos.y)
@@ -58,9 +48,75 @@ function _draw()
     -- draw map
     map(0,0,0,0,128,32)
 
-    -- draw player
     draw_obj(player)
+	draw_obj(enemy)
 end
+-->8
+--------------------------
+--- characters program ---
+--------------------------
+
+function update_player()
+	-- running mechanics
+	if(btn(0) == true) then
+		 player.vel.x = -player.speed.x
+		 sfx(0)
+	end
+
+	if(btn(1) == true) then
+		player.vel.x = player.speed.x
+		sfx(0)
+	end
+
+	phy_update(player)
+
+	-- jump mechanics
+	if(btn(2) == true and player.is_on_ground) then
+		player.vel.y = -player.speed.y
+		player.is_on_ground = false
+	end
+end
+
+function update_enemy(enemy)
+	phy_update(enemy)
+	if(enemy.fsm ~= nil) then
+		fsm_update(enemy.fsm)
+	end
+end
+
+-- move state
+function enemy_move_enter(enemy)
+	if(enemy.dir == nil) then
+		enemy.dir = 1
+	end
+end
+
+function enemy_move_update(enemy)
+	enemy.vel.x = enemy.speed.x * enemy.dir
+	if(enemy.fsm.timer > 3) then
+		fsm_change_state(enemy.fsm, "idle")
+	end
+end
+
+function enemy_move_exit(enemy)
+	enemy.dir = enemy.dir * -1
+end
+
+-- idle state
+function enemy_idle_enter(enemy)
+	enemy.vel.x = 0
+end
+
+function enemy_idle_update(enemy)
+	enemy.vel.x = 0
+	if(enemy.fsm.timer > 1) then
+		fsm_change_state(enemy.fsm, "move")
+	end
+end
+
+function enemy_idle_exit(enemy)
+end
+
 -->8
 ----------------------
 --- vector library ---
@@ -250,7 +306,7 @@ function phy_update(phy_obj)
 
 	phy_obj.acc = v_init(0,0)
 end
-
+-->8
 -------------------------------------
 ----------- ai library --------------
 -------------------------------------
@@ -265,7 +321,40 @@ function pf_pop(queue)
 	return nil
 end
 
+-- Finite State Machine
+function fsm_init(state_table, init_state_name, obj_parent)
+	local fsm = {}
+	fsm.current_state = init_state_name
+	fsm.states = state_table
+	fsm.timer = 0
+	fsm.parent = obj_parent
 
+	fsm.states[fsm.current_state].enter(fsm.parent)
+	return fsm
+end
+
+function fsm_update(fsm)
+	fsm.states[fsm.current_state].update(fsm.parent)
+	fsm.timer = fsm.timer + 1/30
+end
+
+function fsm_change_state(fsm, next_state)
+	if(fsm.states[next_state] ~= nil) then
+		fsm.states[fsm.current_state].exit(fsm.parent)
+		fsm.current_state = next_state
+		fsm.timer = 0
+		fsm.states[fsm.current_state].enter(fsm.parent)
+	end
+end
+
+function fsm_init_state(state_name, enter_func, update_func, exit_func)
+	local fsm_state = {}
+	fsm_state.name = state_name
+	fsm_state.enter = enter_func
+	fsm_state.update = update_func
+	fsm_state.exit = exit_func
+	return fsm_state
+end
 
 __gfx__
 00000000000000005555555544444444cccccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -276,6 +365,13 @@ __gfx__
 00700700033333304444444444444444cccccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000003003004454444444444444cccccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000004445444444444444cccccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000002220000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000022222000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000027272200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000022222200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000002222000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000220000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __gff__
 0001010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
