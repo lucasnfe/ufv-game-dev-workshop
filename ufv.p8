@@ -27,13 +27,11 @@ end
 function _update()
 	-- Running mechanics
 	if(btn(0) == true) then
-		 -- player.pos.x = player.pos.x - player.speed.x
-		 player.vel.x = player.speed.x
+		 player.vel.x = -player.speed.x
 		 sfx(0)
 	end
 
 	if(btn(1) == true) then
-		-- player.pos.x = player.pos.x + player.speed.x
 		player.vel.x = player.speed.x
 		sfx(0)
 	end
@@ -179,7 +177,7 @@ function phy_init_obj(game_obj, mass, speed)
 end
 
 function phy_apply_friction(phy_obj, grd_fric)
-	if(abs(phy_obj.vel.x) > 0) then
+	if(abs(phy_obj.vel.x) > 0.01) then
 		local n_vel_x = v_norm(phy_obj.vel).x * -1
 		local fric = v_init(n_vel_x * grd_fric, 0)
 		phy_apply_force(phy_obj, fric)
@@ -233,12 +231,14 @@ function phy_update(phy_obj)
 	local g_force = v_init(0, g_const)
 	phy_apply_force(phy_obj, v_mul(g_force, phy_obj.mass))
 
+	-- apply "friction" against ground and air
+	phy_apply_friction(phy_obj, 0.5)
+
 	phy_obj.vel = v_add(phy_obj.vel, phy_obj.acc)
 
 	-- detect horizontal collision
 	if(abs(phy_obj.vel.x) > 0) then
 		phy_detect_horz_collision(phy_obj)
-		phy_apply_friction(phy_obj, 0.5)
 	end
 
 	-- detect vertical collision
