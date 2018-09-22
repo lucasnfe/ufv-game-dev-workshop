@@ -21,4 +21,4 @@ http://lucasnferreira.com/csim/home.html
 
 - Computer Simulations and Interactive Media 2018
 
-https://lucasnfe.github.io/csim18/assignments.html
+https://lucasnfe.github.io/csim18/
